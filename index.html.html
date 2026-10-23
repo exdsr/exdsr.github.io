@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Редактор презентаций reveal.js</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: #1e1e1e;
+    color: #e0e0e0;
+    overflow: hidden;
+  }
+
+  .toolbar {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px; background: #252526;
+    border-bottom: 1px solid #3c3c3c;
+    height: 56px; overflow-x: auto; flex-shrink: 0;
+  }
+  .toolbar::-webkit-scrollbar { height: 4px; }
+  .toolbar::-webkit-scrollbar-thumb { background: #444; }
+
+  .toolbar .logo {
+    font-weight: 600; font-size: 15px; color: #4ec9b0;
+    margin-right: 6px; white-space: nowrap;
+  }
+  .toolbar .divider { width: 1px; height: 26px; background: #3c3c3c; margin: 0 4px; }
+  .toolbar label { font-size: 12px; color: #888; white-space: nowrap; }
+  .toolbar select {
+    background: #333; color: #ddd; border: 1px solid #444;
+    border-radius: 4px; padding: 6px 8px; font-size: 13px;
+    cursor: pointer; outline: none;
+  }
+  .toolbar select:hover { border-color: #4ec9b0; }
+  .toolbar optgroup { color: #666; font-style: normal; }
+  .toolbar option { color: #ddd; background: #333; }
+
+  .btn {
+    padding: 7px 14px; border: none; border-radius: 5px;
+    font-size: 13px; font-weight: 500; cursor: pointer;
+    transition: all 0.15s; white-space: nowrap;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-green { background: #27ae60; color: #fff; }
+  .btn-green:hover { background: #229954; }
+  .btn-blue { background: #2b7a78; color: #fff; }
+  .btn-blue:hover { background: #206661; }
+  .btn-ghost { background: transparent; color: #aaa; border: 1px solid #444; }
+  .btn-ghost:hover { color: #fff; border-color: #666; }
+
+  .toolbar .spacer { flex: 1; min-width: 10px; }
+  .toolbar .status { font-size: 12px; color: #888; white-space: nowrap; }
+  .toolbar .status.ok { color: #4ec9b0; }
+
+  .main {
+    display: flex;
+    height: calc(100vh - 56px);
+    background: #3c3c3c;
+    overflow: hidden;
+  }
+
+  /* ===================== ЛЕВАЯ ПАНЕЛЬ — flex-колонка ===================== */
+  .editor-panel {
+    width: 50%; min-width: 200px;
+    background: #1e1e1e;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;   /* скролл только у slides-scroll */
+    position: relative;
+    padding: 0;
+  }
+
+  /* ============ ПАНЕЛЬ ИНСТРУМЕНТОВ — закреплена сверху ============ */
+  .insert-bar-wrapper {
+    margin: 12px 12px 0 12px;
+    background: #252526;
+    border-radius: 6px;
+    border: 1px solid #3c3c3c;
+    flex-shrink: 0;   /* не сжимается при скролле слайдов */
+  }
+
+  .insert-bar-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    background: #2d2d30;
+    border-radius: 6px 6px 0 0;
+    border-bottom: 1px solid #3c3c3c;
+    user-select: none;
+  }
+
+  .insert-bar-header .collapse-btn {
+    width: 24px; height: 24px;
+    background: transparent; border: 1px solid #444;
+    color: #ccc; border-radius: 4px; cursor: pointer;
+    font-size: 12px; display: flex; align-items: center; justify-content: center;
+    padding: 0; line-height: 1;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+  .insert-bar-header .collapse-btn:hover {
+    color: #4ec9b0; border-color: #4ec9b0;
+    background: rgba(78,201,176,0.12);
+  }
+
+  .insert-bar-header .insert-bar-title {
+    font-size: 12px; color: #aaa; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+
+  .insert-bar-header .insert-bar-hint {
+    font-size: 11px; color: #666;
+    margin-left: auto;
+  }
+
+  .insert-bar-wrapper.collapsed .insert-bar-header {
+    border-radius: 6px;
+    border-bottom: none;
+  }
+  .insert-bar-wrapper.collapsed .insert-bar-content {
+    display: none;
+  }
+
+  .insert-bar-content {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 10px;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+  .insert-bar-content::-webkit-scrollbar { width: 6px; }
+  .insert-bar-content::-webkit-scrollbar-thumb {
+    background: #444; border-radius: 3px;
+  }
+
+  .insert-bar-content .group-label {
+    font-size: 11px; color: #666;
+    align-self: center; text-transform: uppercase;
+    letter-spacing: 0.5px; margin-right: 2px;
+  }
+  .insert-bar-content .sep {
+    width: 1px; background: #3c3c3c;
+    align-self: stretch; margin: 0 4px;
+  }
+  .insert-bar-content button {
+    background: #333; color: #ccc;
+    border: 1px solid #444;
+    padding: 4px 10px; border-radius: 4px;
+    font-size: 12px; cursor: pointer; transition: 0.15s;
+  }
+  .insert-bar-content button:hover {
+    background: #3c3c3c; color: #fff; border-color: #4ec9b0;
+  }
+  .insert-bar-content button.sub-btn {
+    border-color: #f39c12; color: #f39c12;
+  }
+  .insert-bar-content button.sub-btn:hover {
+    background: #f39c12; color: #000; border-color: #f39c12;
+  }
+  .insert-bar-content button.block-btn {
+    border-color: #9b59b6; color: #c39bd3;
+  }
+  .insert-bar-content button.block-btn:hover {
+    background: #9b59b6; color: #fff; border-color: #9b59b6;
+  }
+  .insert-bar-content button[data-wrap]::before {
+    content: '⤶ ';
+    opacity: 0.6;
+  }
+
+  /* ============ СКРОЛЛИРУЕМЫЙ КОНТЕЙНЕР СЛАЙДОВ ============ */
+  .slides-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 12px;
+    min-height: 0;   /* важно для flex-скролла */
+  }
+  .slides-scroll::-webkit-scrollbar { width: 10px; }
+  .slides-scroll::-webkit-scrollbar-thumb { background: #444; border-radius: 5px; }
+  .slides-scroll::-webkit-scrollbar-track { background: #1e1e1e; }
+
+  /* ============ РАЗДЕЛИТЕЛЬ ============ */
+  .splitter {
+    width: 6px; background: #3c3c3c; cursor: col-resize;
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s;
+  }
+  .splitter::after {
+    content: ''; width: 2px; height: 40px;
+    background: #555; border-radius: 2px;
+  }
+  .splitter:hover, .splitter.active { background: #4ec9b0; }
+  .splitter:hover::after, .splitter.active::after { background: #1e1e1e; }
+
+  /* ============ ПРАВАЯ ПАНЕЛЬ ============ */
+  .preview-panel {
+    flex: 1; background: #333;
+    position: relative; min-width: 200px; overflow: hidden;
+  }
+  #preview-frame {
+    width: 100%; height: 100%; border: none;
+    background: #fff; display: block;
+  }
+
+  /* ============ СЛАЙДЫ ============ */
+  .slide-block {
+    background: #252526; border: 1px solid #3c3c3c;
+    border-radius: 6px; margin-bottom: 12px;
+    overflow: hidden; transition: border-color 0.15s;
+  }
+  .slide-block:hover { border-color: #4ec9b0; }
+  .slide-block.dragging { opacity: 0.5; border-color: #27ae60; }
+  .slide-block.drag-over { border-top: 3px solid #27ae60; }
+
+  .slide-header {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 12px; background: #2d2d30;
+    border-bottom: 1px solid #3c3c3c;
+    font-size: 13px; font-weight: 600; color: #ccc;
+    cursor: default; user-select: none;
+  }
+
+  .slide-header .drag-handle {
+    color: #666; font-size: 16px;
+    user-select: none; cursor: grab;
+    padding: 4px 6px; border-radius: 4px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .slide-header .drag-handle:hover {
+    color: #4ec9b0;
+    background: rgba(78, 201, 176, 0.12);
+  }
+  .slide-header .drag-handle:active {
+    cursor: grabbing;
+    background: rgba(78, 201, 176, 0.25);
+  }
+
+  .slide-header .num { color: #4ec9b0; font-weight: 700; }
+  .slide-header .sub-count {
+    font-size: 11px; color: #f39c12;
+    background: rgba(243, 156, 18, 0.15);
+    padding: 2px 7px; border-radius: 10px; font-weight: 500;
+  }
+  .slide-header .actions { margin-left: auto; display: flex; gap: 6px; }
+  .slide-header .actions button {
+    background: transparent; border: 1px solid #444;
+    color: #aaa; width: 26px; height: 26px;
+    border-radius: 4px; cursor: pointer; font-size: 14px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .slide-header .actions button:hover { color: #fff; border-color: #666; }
+  .slide-header .actions button.sub:hover { color: #f39c12; border-color: #f39c12; }
+  .slide-header .actions button.del:hover {
+    background: #c0392b; border-color: #c0392b; color: #fff;
+  }
+
+  .slide-block textarea {
+    width: 100%; min-height: 160px;
+    background: #1e1e1e; color: #d4d4d4;
+    border: none; padding: 12px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 13px; line-height: 1.5;
+    resize: vertical; outline: none; tab-size: 2;
+  }
+
+  /* ============ МОДАЛЬНОЕ ОКНО ============ */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); z-index: 1000;
+    align-items: center; justify-content: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: #252526; border: 1px solid #444;
+    border-radius: 8px; padding: 20px;
+    width: 90%; max-width: 640px; color: #ddd;
+  }
+  .modal h3 { margin-bottom: 12px; color: #4ec9b0; font-size: 16px; }
+  .modal p.hint { font-size: 12px; color: #888; margin-bottom: 10px; }
+  .modal textarea {
+    width: 100%; height: 220px;
+    background: #1e1e1e; color: #d4d4d4;
+    border: 1px solid #444; border-radius: 4px;
+    padding: 10px; font-family: 'Consolas', monospace;
+    font-size: 13px; resize: vertical;
+  }
+  .modal .modal-actions {
+    display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px;
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <div class="logo">◆ Reveal Editor</div>
+
+  <button class="btn btn-green" id="btnRefresh">▶ Обновить</button>
+  <button class="btn btn-blue" id="btnAddSlide">+ Слайд</button>
+
+  <div class="divider"></div>
+
+  <label>Тема:</label>
+  <select id="themeSelect">
+    <option value="white">white</option>
+    <option value="black">black</option>
+    <option value="league">league</option>
+    <option value="beige">beige</option>
+    <option value="sky">sky</option>
+    <option value="night">night</option>
+    <option value="serif">serif</option>
+    <option value="simple">simple</option>
+    <option value="solarized">solarized</option>
+    <option value="moon">moon</option>
+    <option value="dracula">dracula</option>
+    <option value="blood">blood</option>
+  </select>
+
+  <label>Формат:</label>
+  <select id="aspectSelect" title="Соотношение сторон слайда">
+    <option value="16:9" selected>16:9 — широкий (1280×720)</option>
+    <option value="16:10">16:10 — макбук (1280×800)</option>
+    <option value="4:3">4:3 — классика (1024×768)</option>
+  </select>
+
+  <label>Шрифт:</label>
+  <select id="fontSelect">
+    <optgroup label="Системные Sans">
+      <option value="'Segoe UI', system-ui, sans-serif">Segoe UI</option>
+      <option value="Arial, Helvetica, sans-serif">Arial</option>
+      <option value="Verdana, Geneva, sans-serif">Verdana</option>
+      <option value="Tahoma, Geneva, sans-serif">Tahoma</option>
+      <option value="'Trebuchet MS', sans-serif">Trebuchet MS</option>
+      <option value="Calibri, sans-serif">Calibri</option>
+      <option value="Helvetica, Arial, sans-serif">Helvetica</option>
+      <option value="'Century Gothic', sans-serif">Century Gothic</option>
+    </optgroup>
+    <optgroup label="Системные Serif">
+      <option value="Georgia, 'Times New Roman', serif">Georgia</option>
+      <option value="'Times New Roman', serif">Times New Roman</option>
+      <option value="Cambria, Georgia, serif">Cambria</option>
+      <option value="'Palatino Linotype', Palatino, serif">Palatino</option>
+      <option value="'Book Antiqua', Palatino, serif">Book Antiqua</option>
+      <option value="Garamond, serif">Garamond</option>
+    </optgroup>
+    <optgroup label="Моно">
+      <option value="'Courier New', Consolas, monospace">Courier New</option>
+      <option value="Consolas, 'Courier New', monospace">Consolas</option>
+      <option value="'Lucida Console', Monaco, monospace">Lucida Console</option>
+    </optgroup>
+    <optgroup label="Google Sans">
+      <option value="'Open Sans', sans-serif">Open Sans</option>
+      <option value="'Roboto', sans-serif">Roboto</option>
+      <option value="'Montserrat', sans-serif">Montserrat</option>
+    </optgroup>
+    <optgroup label="Google Serif">
+      <option value="'PT Serif', serif">PT Serif</option>
+      <option value="'Merriweather', serif">Merriweather</option>
+      <option value="'Playfair Display', serif">Playfair Display</option>
+    </optgroup>
+    <optgroup label="Декоративные">
+      <option value="'Comic Sans MS', 'Comic Neue', cursive">Comic Sans MS</option>
+      <option value="'Bebas Neue', Impact, sans-serif">Bebas Neue</option>
+      <option value="'Pacifico', cursive">Pacifico</option>
+      <option value="Impact, sans-serif">Impact</option>
+    </optgroup>
+  </select>
+
+  <label>Текст:</label>
+  <select id="baseSizeSelect">
+    <option value="24">24px</option>
+    <option value="28">28px</option>
+    <option value="32" selected>32px</option>
+    <option value="36">36px</option>
+    <option value="40">40px</option>
+  </select>
+
+  <label>Заголовок:</label>
+  <select id="titleSizeSelect">
+    <option value="0.5">0.5em</option>
+    <option value="0.6">0.6em</option>
+    <option value="0.75" selected>0.75em</option>
+    <option value="0.9">0.9em</option>
+    <option value="1.0">1.0em</option>
+    <option value="1.25">1.25em</option>
+    <option value="1.5">1.5em</option>
+  </select>
+
+  <div class="spacer"></div>
+
+  <button class="btn btn-ghost" id="btnImport">Импорт MD</button>
+  <button class="btn btn-ghost" id="btnExport">Экспорт MD</button>
+  <button class="btn btn-green" id="btnExportHTML">💾 Экспорт HTML</button>
+  <button class="btn btn-ghost" id="btnReset" title="Сбросить всё к заводским примерам">⟲ Сброс</button>
+
+  <div class="status" id="status">Готово</div>
+</div>
+
+<div class="main">
+
+  <div class="editor-panel" id="editorPanel">
+
+    <!-- ★ Панель инструментов — закреплена сверху, не участвует в скролле -->
+    <div class="insert-bar-wrapper" id="insertBarWrapper">
+      <div class="insert-bar-header">
+        <button class="collapse-btn" id="btnToggleTools" title="Свернуть панель (Ctrl+B)">▼</button>
+        <span class="insert-bar-title">🛠 Инструменты</span>
+        <span class="insert-bar-hint" id="insertBarHint">Ctrl+B — свернуть</span>
+      </div>
+      <div class="insert-bar-content" id="insertBarContent">
+        <span class="group-label">Формула</span>
+        <button data-insert="$$E = mc^2$$">$$…$$</button>
+        <button data-insert="$x^2 + y^2$">$…$</button>
+
+        <span class="sep"></span>
+
+        <span class="group-label">Символы</span>
+        <button data-insert="\frac{a}{b}">Дробь</button>
+        <button data-insert="\sqrt{x}">√</button>
+        <button data-insert="x^{n}">xⁿ</button>
+        <button data-insert="x_{n}">xₙ</button>
+        <button data-insert="$$\begin{cases} x + y = 1 \\ x - y = 0 \end{cases}$$">Система</button>
+        <button data-insert="$$\left[\begin{array}{l} x + y = 1 \\ x - y = 0 \end{array}\right.$$">Совокупность</button>
+
+        <span class="sep"></span>
+
+        <span class="group-label">Вставить</span>
+        <button data-insert="![alt](https://picsum.photos/400/300){width=60%}">Картинка</button>
+        <button data-insert="![alt](https://picsum.photos/400/300){width=300 .img-right}">Картинка→</button>
+        <button data-insert="| A | B |&#10;|---|---|&#10;| 1 | 2 |">Таблица</button>
+        <button data-insert="::: {.text-center}&#10;| A | B |&#10;|---|---|&#10;| 1 | 2 |&#10;:::">Таблица центр</button>
+        <button data-insert="- пункт 1&#10;- пункт 2&#10;  - вложенный">Список</button>
+
+        <span class="sep"></span>
+
+        <span class="group-label">Матем. блоки</span>
+        <button class="block-btn" data-insert="::: {.block-definition}&#10;Определение...&#10;:::">📗 Определение</button>
+        <button class="block-btn" data-insert="::: {.block-theorem}&#10;Формулировка теоремы...&#10;:::">📘 Теорема</button>
+        <button class="block-btn" data-insert="::: {.block-proof}&#10;Доказательство...&#10;:::">✏️ Доказательство</button>
+        <button class="block-btn" data-insert="::: {.block-example}&#10;Пример...&#10;:::">💡 Пример</button>
+        <button class="block-btn" data-insert="::: {.block-problem}&#10;Условие задачи...&#10;:::">📝 Задача</button>
+        <button class="block-btn" data-insert="::: {.block-solution}&#10;Решение...&#10;:::">✅ Решение</button>
+        <button class="block-btn" data-insert="::: {.block-answer}&#10;Ответ: ...&#10;:::">🎯 Ответ</button>
+        <button class="block-btn" data-insert="::: {.block-note}&#10;Замечание...&#10;:::">💭 Замечание</button>
+        <button class="block-btn" data-insert="::: {.block-warning}&#10;Внимание! ...&#10;:::">⚠️ Внимание</button>
+        <button class="block-btn" data-insert="::: {.block-important}&#10;Важно! ...&#10;:::">❗ Важно</button>
+        <button class="block-btn" data-insert="::: {.block-formula}&#10;$$E = mc^2$$&#10;:::">🔢 Формула</button>
+
+        <span class="sep"></span>
+
+        <span class="group-label">Подслайд</span>
+        <button class="sub-btn" id="btnInsertSubslide">↓ Подслайд (вертикальный)</button>
+
+        <span class="sep"></span>
+
+        <span class="group-label">Шрифт</span>
+        <button data-wrap data-insert="::: {.font-sans}&#10;Sans-serif текст&#10;:::">Sans</button>
+        <button data-wrap data-insert="::: {.font-serif}&#10;Serif текст&#10;:::">Serif</button>
+        <button data-wrap data-insert="::: {.font-mono}&#10;Monospace текст&#10;:::">Mono</button>
+
+        <span class="sep"></span>
+
+        <span class="group-label">Размер</span>
+        <button data-wrap data-insert="::: {.font-small}&#10;Мелкий&#10;:::">S</button>
+        <button data-wrap data-insert="::: {.font-medium}&#10;Средний&#10;:::">M</button>
+        <button data-wrap data-insert="::: {.font-large}&#10;Крупный&#10;:::">L</button>
+        <button data-wrap data-insert="::: {.font-huge}&#10;Огромный&#10;:::">XL</button>
+
+        <span class="sep"></span>
+
+        <span class="group-label">Выравнивание</span>
+        <button data-wrap data-insert="::: {.text-left}&#10;По левому краю&#10;:::">◧ Левый</button>
+        <button data-wrap data-insert="::: {.text-center}&#10;По центру&#10;:::">◫ Центр</button>
+        <button data-wrap data-insert="::: {.text-right}&#10;По правому краю&#10;:::">◨ Правый</button>
+        <button data-wrap data-insert="::: {.text-justify}&#10;По ширине&#10;:::">☰ По ширине</button>
+
+        <span class="sep"></span>
+
+        <span class="group-label">Цвет</span>
+        <button data-wrap data-insert="::: {style='color:#e74c3c'}&#10;Красный&#10;:::">●</button>
+        <button data-wrap data-insert="::: {style='color:#27ae60'}&#10;Зелёный&#10;:::">●</button>
+        <button data-wrap data-insert="::: {style='color:#3498db'}&#10;Синий&#10;:::">●</button>
+        <button data-wrap data-insert="::: {style='color:#f39c12'}&#10;Оранжевый&#10;:::">●</button>
+      </div>
+    </div>
+
+    <!-- ★ Скроллируемый контейнер со слайдами -->
+    <div class="slides-scroll" id="slidesScroll">
+      <button class="btn btn-blue" id="btnAddSlideBottom"
+              style="width:100%;">+ Добавить слайд</button>
+    </div>
+  </div>
+
+  <div class="splitter" id="splitter"></div>
+
+  <div class="preview-panel" id="previewPanel">
+    <iframe id="preview-frame"></iframe>
+  </div>
+</div>
+
+<div class="modal-overlay" id="importModal">
+  <div class="modal">
+    <h3>Импорт презентации</h3>
+    <p class="hint">
+      Вставьте Markdown. Горизонтальные слайды разделяются строкой <code>---</code>,
+      вертикальные (подслайды) — строкой <code>--</code>.
+    </p>
+    <textarea id="importText"></textarea>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="btnImportCancel">Отмена</button>
+      <button class="btn btn-green" id="btnImportConfirm">Импортировать</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ==================================================================
+   1. СОСТОЯНИЕ + АВТОСОХРАНЕНИЕ
+   ================================================================== */
+
+const STORAGE_KEY = 'reveal_editor_state_v1';
+let slideCounter = 0;
+let lastFocusedTextarea = null;
+let initializing = true;
+let saveTimeout = null;
+
+let editorRatio = 0.5;
+let resizeDebounceTimer = null;
+
+const ASPECTS = {
+  '16:9':  { w: 1280, h: 720 },
+  '16:10': { w: 1280, h: 800 },
+  '4:3':   { w: 1024, h: 768 }
+};
+
+const DEFAULT_SLIDES = [
+`# Добро пожаловать
+
+Визуальный редактор **reveal.js** для учителя математики.
+
+- Выделите текст и нажмите **S/M/L/XL** — он обернётся в блок
+- **Ctrl+Z** работает как обычно
+- **Ctrl+S** — принудительно сохранить
+- **Ctrl+B** — свернуть/развернуть панель инструментов
+- Все данные автоматически сохраняются в браузере
+- Если контент не влезает — прокрутите его колесом мыши`,
+
+`## Формулы LaTeX
+
+Встроенная: $E = mc^2$
+
+Выключная:
+
+$$
+\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}
+$$`,
+
+`## Системы и совокупности
+
+**Система** (условие «И»):
+
+$$\\begin{cases} x + y = 5 \\\\ x - y = 1 \\end{cases}$$
+
+**Совокупность** (условие «ИЛИ»):
+
+$$\\left[\\begin{array}{l} x = 2 \\\\ x = 3 \\end{array}\\right.$$
+
+::: {.block-note}
+Обратите внимание: круглая скобка $\\{$ — это **система** (все условия выполняются одновременно), а квадратная $[$ — **совокупность** (достаточно одного из условий).
+:::`,
+
+`## Блоки для математики
+
+::: {.block-definition}
+**Квадратным уравнением** называется уравнение вида $ax^2 + bx + c = 0$, где $a \\neq 0$.
+:::
+
+::: {.block-theorem data-title="Теорема Виета"}
+Сумма корней приведённого квадратного уравнения $x^2 + px + q = 0$ равна $-p$, произведение равно $q$:
+
+$$x_1 + x_2 = -p, \\quad x_1 x_2 = q$$
+:::
+
+::: {.block-example}
+Решить уравнение $x^2 - 5x + 6 = 0$.
+:::
+
+::: {.block-solution}
+По теореме Виета: $x_1 + x_2 = 5$, $x_1 x_2 = 6$. Корни: $x_1 = 2$, $x_2 = 3$.
+:::
+
+::: {.block-answer}
+$x_1 = 2, \\quad x_2 = 3$
+:::`,
+
+`## Задача с решением
+
+::: {.block-problem data-title="Задача 1"}
+Вычислите значение выражения $\\dfrac{\\sqrt{50}}{\\sqrt{2}}$.
+:::
+
+::: {.block-solution}
+$$\\frac{\\sqrt{50}}{\\sqrt{2}} = \\sqrt{\\frac{50}{2}} = \\sqrt{25} = 5$$
+:::
+
+::: {.block-answer}
+$5$
+:::
+
+::: {.block-note data-title="Использовано свойство"}
+$\\dfrac{\\sqrt{a}}{\\sqrt{b}} = \\sqrt{\\dfrac{a}{b}}$ при $a \\geq 0$, $b > 0$.
+:::`,
+
+`## Определитель и скалярное произведение
+
+Определитель второго порядка:
+
+$$\\begin{vmatrix} a & b \\\\ c & d \\end{vmatrix} = ad - bc$$
+
+::: {.block-formula data-title="Скалярное произведение"}
+$$\\vec{a} \\cdot \\vec{b} = |\\vec{a}| \\cdot |\\vec{b}| \\cdot \\cos \\alpha$$
+:::`,
+
+`## Теорема и доказательство
+
+::: {.block-theorem data-title="Теорема о сумме углов"}
+Сумма углов треугольника равна $180^\\circ$.
+:::
+
+::: {.block-proof}
+Проведём через вершину прямую, параллельную противоположной стороне. Накрест лежащие углы равны углам треугольника, а вместе они составляют развёрнутый угол $180^\\circ$.
+:::
+
+::: {.block-example}
+Найдите третий угол треугольника, если два других равны $45^\\circ$ и $60^\\circ$.
+:::
+
+::: {.block-answer}
+$75^\\circ$
+:::`,
+
+`## Слайд с подслайдами
+
+Это первый подслайд. Нажмите стрелку **↓** в плеере, чтобы увидеть следующий.
+
+--
+
+## Второй подслайд
+
+Второй вертикальный слайд.
+
+--
+
+## Третий подслайд
+
+Третий вертикальный слайд.`,
+
+`## Прокрутка внутри слайда
+
+Если текста больше, чем помещается на экран, слайд становится прокручиваемым — крутите колесо мыши.
+
+- Пункт 1
+- Пункт 2
+- Пункт 3
+- Пункт 4
+- Пункт 5
+- Пункт 6
+- Пункт 7
+- Пункт 8
+- Пункт 9
+- Пункт 10
+- Пункт 11
+- Пункт 12
+- Пункт 13
+- Пункт 14
+- Пункт 15 — если видите этот пункт, прокрутка работает`
+];
+
+function getSettings() {
+  return {
+    theme:     document.getElementById('themeSelect').value,
+    font:      document.getElementById('fontSelect').value,
+    baseSize:  document.getElementById('baseSizeSelect').value,
+    titleSize: document.getElementById('titleSizeSelect').value,
+    aspect:    document.getElementById('aspectSelect').value
+  };
+}
+
+function setSettings(s) {
+  if (!s) return;
+  if (s.theme)     document.getElementById('themeSelect').value = s.theme;
+  if (s.font)      document.getElementById('fontSelect').value = s.font;
+  if (s.baseSize)  document.getElementById('baseSizeSelect').value = s.baseSize;
+  if (s.titleSize) document.getElementById('titleSizeSelect').value = s.titleSize;
+  if (s.aspect && ASPECTS[s.aspect]) {
+    document.getElementById('aspectSelect').value = s.aspect;
+  }
+}
+
+function isToolsCollapsed() {
+  const wrapper = document.getElementById('insertBarWrapper');
+  return wrapper && wrapper.classList.contains('collapsed');
+}
+
+function saveState() {
+  if (initializing) return;
+  try {
+    const state = {
+      slides: getSlidesContent(),
+      ...getSettings(),
+      toolsCollapsed: isToolsCollapsed(),
+      editorRatio: editorRatio,
+      _savedAt: Date.now()
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    const st = document.getElementById('status');
+    st.textContent = '✓ Сохранено';
+    st.classList.add('ok');
+  } catch (e) {
+    console.warn('Не удалось сохранить состояние', e);
+  }
+}
+
+function scheduleSave() {
+  if (initializing) return;
+  clearTimeout(saveTimeout);
+  const st = document.getElementById('status');
+  st.textContent = '💾 Сохранение...';
+  st.classList.remove('ok');
+  saveTimeout = setTimeout(saveState, 400);
+}
+
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed;
+  } catch (e) {
+    console.warn('Не удалось загрузить состояние', e);
+    return null;
+  }
+}
+
+/* ==================================================================
+   2. УПРАВЛЕНИЕ СЛАЙДАМИ
+   ================================================================== */
+
+function createSlideBlock(content = '') {
+  const id = ++slideCounter;
+  const block = document.createElement('div');
+  block.className = 'slide-block';
+  block.dataset.id = id;
+
+  block.innerHTML = `
+    <div class="slide-header">
+      <span class="drag-handle" title="Перетащить слайд">⋮⋮</span>
+      <span class="num">Слайд ${id}</span>
+      <span class="sub-count" style="display:none;"></span>
+      <div class="actions">
+        <button class="sub" title="Добавить подслайд (вертикальный)">↓+</button>
+        <button class="up" title="Вверх">↑</button>
+        <button class="down" title="Вниз">↓</button>
+        <button class="del" title="Удалить">✕</button>
+      </div>
+    </div>
+    <textarea spellcheck="false" placeholder="Markdown + LaTeX... (для подслайда используйте строку -- )">${escapeHtml(content)}</textarea>
+  `;
+
+  const textarea = block.querySelector('textarea');
+  const handle   = block.querySelector('.drag-handle');
+
+  textarea.addEventListener('focus', () => { lastFocusedTextarea = textarea; });
+  textarea.addEventListener('input', () => { updateSlideInfo(block); scheduleSave(); });
+  textarea.addEventListener('blur', () => { saveState(); });
+
+  handle.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    block.draggable = true;
+    const onMouseUp = () => {
+      document.removeEventListener('mouseup', onMouseUp);
+      setTimeout(() => { block.draggable = false; }, 0);
+    };
+    document.addEventListener('mouseup', onMouseUp);
+  });
+
+  block.addEventListener('dragstart', (e) => {
+    if (!handle.matches(':active') && !handle.matches(':hover')) {
+      e.preventDefault();
+      return;
+    }
+    block.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(id));
+  });
+
+  block.addEventListener('dragend', () => {
+    block.classList.remove('dragging');
+    block.draggable = false;
+    document.querySelectorAll('.slide-block').forEach(b => b.classList.remove('drag-over'));
+  });
+
+  block.addEventListener('dragover', (e) => {
+    if (!document.querySelector('.slide-block.dragging')) return;
+    e.preventDefault();
+    block.classList.add('drag-over');
+  });
+
+  block.addEventListener('dragleave', () => block.classList.remove('drag-over'));
+
+  block.addEventListener('drop', (e) => {
+    e.preventDefault();
+    block.classList.remove('drag-over');
+    const dragging = document.querySelector('.slide-block.dragging');
+    if (!dragging || dragging === block) return;
+    const rect = block.getBoundingClientRect();
+    const after = (e.clientY - rect.top) > rect.height / 2;
+    if (after) block.parentNode.insertBefore(dragging, block.nextSibling);
+    else       block.parentNode.insertBefore(dragging, block);
+    renumberSlides();
+    scheduleSave();
+  });
+
+  block.querySelector('.sub').addEventListener('click', () => {
+    insertSubslideInto(textarea);
+  });
+
+  block.querySelector('.del').addEventListener('click', () => {
+    block.remove(); renumberSlides(); scheduleSave();
+  });
+
+  block.querySelector('.up').addEventListener('click', () => {
+    const prev = block.previousElementSibling;
+    if (prev && prev.classList.contains('slide-block')) {
+      block.parentNode.insertBefore(block, prev);
+      renumberSlides(); scheduleSave();
+    }
+  });
+
+  block.querySelector('.down').addEventListener('click', () => {
+    const next = block.nextElementSibling;
+    if (next && next.classList.contains('slide-block')) {
+      block.parentNode.insertBefore(next, block);
+      renumberSlides(); scheduleSave();
+    }
+  });
+
+  updateSlideInfo(block);
+  return block;
+}
+
+function renumberSlides() {
+  document.querySelectorAll('.slide-block').forEach((block, idx) => {
+    updateSlideInfo(block, idx + 1);
+  });
+}
+
+function updateSlideInfo(block, explicitIdx) {
+  const textarea = block.querySelector('textarea');
+  const numEl = block.querySelector('.num');
+  const subEl = block.querySelector('.sub-count');
+
+  const idx = explicitIdx ||
+    (Array.from(document.querySelectorAll('.slide-block')).indexOf(block) + 1);
+  numEl.textContent = 'Слайд ' + idx;
+
+  const subCount = (textarea.value.match(/^--\s*$/gm) || []).length;
+  if (subCount > 0) {
+    subEl.textContent = '+' + subCount + ' подслайд' + (subCount > 1 ? 'а' : '');
+    subEl.style.display = '';
+  } else {
+    subEl.style.display = 'none';
+  }
+}
+
+/* ★ Слайды добавляются в .slides-scroll (не в editor-panel) */
+function addSlide(content = '') {
+  const scroll = document.getElementById('slidesScroll');
+  const bottomBtn = document.getElementById('btnAddSlideBottom');
+  const block = createSlideBlock(content);
+  scroll.insertBefore(block, bottomBtn);
+  renumberSlides();
+  scheduleSave();
+  return block;
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/* ==================================================================
+   3. ВСТАВКА С СОХРАНЕНИЕМ UNDO
+   ================================================================== */
+
+function safeInsertText(textarea, text) {
+  textarea.focus();
+  let ok = false;
+  try {
+    ok = document.execCommand('insertText', false, text);
+  } catch (e) { ok = false; }
+
+  if (!ok) {
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    textarea.value = textarea.value.substring(0, start) + text + textarea.value.substring(end);
+    textarea.selectionStart = textarea.selectionEnd = start + text.length;
+  }
+}
+
+function insertTemplate(textarea, template) {
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const selected = textarea.value.substring(start, end);
+
+  const lines = template.split('\n');
+  const isFenced = lines.length >= 3 &&
+                   /^\s*:::\s*\{/.test(lines[0]) &&
+                   lines[lines.length - 1].trim() === ':::';
+
+  textarea.focus();
+  textarea.setSelectionRange(start, end);
+
+  if (isFenced && selected.trim()) {
+    const openLine  = lines[0];
+    const closeLine = ':::';
+    const wrapped = openLine + '\n' + selected + '\n' + closeLine;
+    safeInsertText(textarea, wrapped);
+    const pos = start + wrapped.length;
+    textarea.setSelectionRange(pos, pos);
+  } else if (isFenced) {
+    safeInsertText(textarea, template);
+    const placeholderStart = start + lines[0].length + 1;
+    const placeholderEnd = placeholderStart + (lines[1] ? lines[1].length : 0);
+    textarea.setSelectionRange(placeholderStart, placeholderEnd);
+  } else {
+    safeInsertText(textarea, template);
+    const pos = start + template.length;
+    textarea.setSelectionRange(pos, pos);
+  }
+
+  lastFocusedTextarea = textarea;
+  updateSlideInfo(textarea.parentNode);
+  scheduleSave();
+}
+
+function insertSubslideInto(textarea) {
+  const cursorPos = textarea.selectionStart;
+  const val = textarea.value;
+
+  const lineEnd = val.indexOf('\n', cursorPos);
+  const afterCursor = lineEnd === -1 ? val.length : lineEnd;
+  const restOfLine = val.substring(cursorPos, afterCursor);
+
+  const insertText = (restOfLine.trim() ? '\n' : '') + '\n\n--\n\n';
+
+  textarea.focus();
+  textarea.setSelectionRange(cursorPos, cursorPos);
+  safeInsertText(textarea, insertText);
+
+  const newPos = cursorPos + insertText.length;
+  textarea.setSelectionRange(newPos, newPos);
+  lastFocusedTextarea = textarea;
+  updateSlideInfo(textarea.parentNode);
+  scheduleSave();
+}
+
+/* ==================================================================
+   4. ПРЕПРОЦЕССОР MARKDOWN
+   ================================================================== */
+
+function parseAttrs(attrsStr) {
+  const result = { classes: [], style: '', width: '', height: '', data: {} };
+  const tokens = attrsStr.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+
+  for (const t of tokens) {
+    if (t.startsWith('.')) {
+      result.classes.push(t.slice(1));
+    } else if (t.startsWith('#')) {
+      /* id игнорируем */
+    } else {
+      const eq = t.indexOf('=');
+      if (eq > 0) {
+        const key = t.slice(0, eq);
+        const val = t.slice(eq + 1).replace(/^["']|["']$/g, '');
+        if (key === 'style') {
+          result.style += val + (val.trim().endsWith(';') ? '' : ';');
+        } else if (key === 'width')  result.width  = val;
+        else if (key === 'height')   result.height = val;
+        else if (key === 'class')    result.classes.push(...val.split(/\s+/));
+        else if (key.startsWith('data-')) result.data[key] = val;
+      }
+    }
+  }
+  return result;
+}
+
+function normalizeSize(v) {
+  if (!v) return '';
+  return /^\d+(\.\d+)?$/.test(v) ? v + 'px' : v;
+}
+
+function fixMathBackslashes(md) {
+  return md.replace(/(\$\$[\s\S]*?\$\$|\$[^$\n]+?\$)/g, (m) => {
+    return m.replace(/\\/g, '\\\\');
+  });
+}
+
+function preprocessImages(md) {
+  return md.replace(
+    /!\[([^\]]*)\]\(([^)\s]+)(?:\s+"[^"]*")?\)\s*\{([^}]+)\}/g,
+    (match, alt, url, attrs) => {
+      const p = parseAttrs(attrs);
+      let style = p.style;
+      if (p.width)  style += `width:${normalizeSize(p.width)};`;
+      if (p.height) style += `height:${normalizeSize(p.height)};`;
+
+      let html = `<img src="${url}" alt="${alt}"`;
+      if (style) html += ` style="${style}"`;
+      if (p.classes.length) html += ` class="${p.classes.join(' ')}"`;
+      html += '>';
+      return html;
+    }
+  );
+}
+
+function preprocessDivs(md) {
+  const lines = md.split('\n');
+  const out = [];
+  const stack = [];
+
+  for (const line of lines) {
+    const openMatch  = line.match(/^\s*:::\s*\{([^}]+)\}\s*$/);
+    const closeMatch = line.match(/^\s*:::\s*$/);
+
+    if (openMatch) {
+      const p = parseAttrs(openMatch[1]);
+      let html = '<div';
+      if (p.classes.length) html += ` class="${p.classes.join(' ')}"`;
+      if (p.style) html += ` style="${p.style}"`;
+      for (const [k, v] of Object.entries(p.data || {})) {
+        html += ` ${k}="${String(v).replace(/"/g, '&quot;')}"`;
+      }
+      html += '>';
+      out.push('', html, '');
+      stack.push(true);
+    } else if (closeMatch && stack.length > 0) {
+      out.push('', '</div>', '');
+      stack.pop();
+    } else {
+      out.push(line);
+    }
+  }
+
+  return out.join('\n');
+}
+
+function preprocessMarkdown(md) {
+  let result = md;
+  result = fixMathBackslashes(result);
+  result = preprocessDivs(result);
+  result = preprocessImages(result);
+  return result;
+}
+
+/* ==================================================================
+   5. СБОРКА HTML
+   ================================================================== */
+
+function getSlidesContent() {
+  return Array.from(document.querySelectorAll('.slide-block textarea'))
+              .map(t => t.value);
+}
+
+function buildPreviewHTML() {
+  const slides = getSlidesContent();
+  const { theme, font, baseSize, titleSize, aspect: aspectKey } = getSettings();
+  const aspect = ASPECTS[aspectKey] || ASPECTS['16:9'];
+
+  const sections = slides.map(md => {
+    const preprocessed = preprocessMarkdown(md);
+    return `<section data-markdown
+      data-separator="^---\\s*$"
+      data-separator-vertical="^--\\s*$"
+      data-separator-notes="^Note:">
+      <script type="text/template">
+${preprocessed}
+      <\/script>
+    </section>`;
+  }).join('\n');
+
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Презентация</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.6.1/dist/reset.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.6.1/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.6.1/dist/theme/${theme}.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Roboto:wght@400;700&family=Montserrat:wght@400;600&family=Merriweather:wght@400;700&family=Playfair+Display:wght@400;600&family=PT+Serif:wght@400;700&family=Bebas+Neue&family=Pacifico&display=swap">
+<style>
+  .reveal .slides section {
+    top: 0 !important;
+    height: 100% !important;
+    padding: 110px 5% 50px 5% !important;
+    box-sizing: border-box;
+    text-align: left;
+    display: block !important;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-height: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(128,128,128,0.4) transparent;
+  }
+  .reveal .slides section::-webkit-scrollbar { width: 8px; }
+  .reveal .slides section::-webkit-scrollbar-track { background: transparent; }
+  .reveal .slides section::-webkit-scrollbar-thumb {
+    background: rgba(128,128,128,0.4); border-radius: 4px;
+  }
+  .reveal .slides section::-webkit-scrollbar-thumb:hover {
+    background: rgba(128,128,128,0.7);
+  }
+
+  .reveal .slides section > h1,
+  .reveal .slides section > h2,
+  .reveal .slides section > h3,
+  .reveal .slides section > h4 {
+    position: absolute;
+    top: 30px; left: 5%; right: 5%;
+    margin: 0;
+    padding: 0 0 12px 0;
+    text-align: left !important;
+    font-size: ${titleSize}em;
+    line-height: 1.15;
+    border-bottom: 2px solid currentColor;
+    opacity: 0.9;
+    text-transform: none;
+    pointer-events: none;
+  }
+  .reveal .slides section > h1:not(:first-child),
+  .reveal .slides section > h2:not(:first-child),
+  .reveal .slides section > h3:not(:first-child),
+  .reveal .slides section > h4:not(:first-child) {
+    position: static;
+    border-bottom: none;
+    padding: 0;
+    margin-top: 0.6em;
+    font-size: 0.9em;
+    pointer-events: auto;
+  }
+
+  .reveal .slides {
+    font-family: ${font} !important;
+    font-size: ${baseSize}px;
+    text-align: left;
+  }
+  .reveal .slides h1, .reveal .slides h2,
+  .reveal .slides h3, .reveal .slides h4 {
+    font-family: ${font} !important;
+    text-transform: none;
+  }
+
+  .reveal .text-left,
+  .reveal .text-left *   { text-align: left    !important; }
+  .reveal .text-center,
+  .reveal .text-center * { text-align: center  !important; }
+  .reveal .text-right,
+  .reveal .text-right *  { text-align: right   !important; }
+  .reveal .text-justify,
+  .reveal .text-justify *{ text-align: justify !important; }
+
+  .reveal table {
+    margin: 15px 0;
+    border-collapse: collapse;
+    font-size: 0.7em;
+    display: table;
+  }
+  .reveal table th, .reveal table td {
+    padding: 6px 14px;
+    border: 1px solid currentColor;
+    text-align: inherit;
+  }
+  .reveal table th { font-weight: 600; opacity: 0.9; }
+
+  .reveal .text-left   table,
+  .reveal .text-left > table   { margin-left: 0 !important;    margin-right: auto !important; }
+  .reveal .text-center table,
+  .reveal .text-center > table { margin-left: auto !important; margin-right: auto !important; }
+  .reveal .text-right  table,
+  .reveal .text-right > table  { margin-left: auto !important; margin-right: 0 !important;    }
+
+  .reveal ul, .reveal ol { display: block; margin-left: 1.2em; }
+  .reveal ul { list-style-type: disc; }
+  .reveal ul ul { list-style-type: circle; margin-left: 1.2em; }
+  .reveal ol { list-style-type: decimal; }
+  .reveal li { margin: 4px 0; }
+  .reveal .katex-display { margin: 15px 0; }
+
+  .reveal .font-sans  { font-family: 'Segoe UI', Arial, sans-serif !important; }
+  .reveal .font-serif { font-family: Georgia, 'Times New Roman', serif !important; }
+  .reveal .font-mono  { font-family: 'Courier New', Consolas, monospace !important; }
+
+  .reveal .font-tiny   { font-size: 0.45em !important; }
+  .reveal .font-small  { font-size: 0.6em !important; }
+  .reveal .font-medium { font-size: 0.85em !important; }
+  .reveal .font-large  { font-size: 1.4em !important; }
+  .reveal .font-huge   { font-size: 2.0em !important; }
+
+  .reveal .color-red    { color: #e74c3c !important; }
+  .reveal .color-green  { color: #27ae60 !important; }
+  .reveal .color-blue   { color: #3498db !important; }
+  .reveal .color-orange { color: #f39c12 !important; }
+
+  .reveal img.img-left   { float: left;  margin: 0 20px 10px 0; }
+  .reveal img.img-right  { float: right; margin: 0 0 10px 20px; }
+  .reveal img.img-center { display: block; margin: 10px auto; }
+  .reveal img            { max-height: 60vh; }
+
+  .reveal .block-theorem,
+  .reveal .block-definition,
+  .reveal .block-lemma,
+  .reveal .block-corollary,
+  .reveal .block-proof,
+  .reveal .block-example,
+  .reveal .block-problem,
+  .reveal .block-solution,
+  .reveal .block-answer,
+  .reveal .block-note,
+  .reveal .block-warning,
+  .reveal .block-important,
+  .reveal .block-formula {
+    margin: 18px 0;
+    padding: 14px 22px 16px 22px;
+    border-radius: 8px;
+    border-left: 5px solid var(--block-accent, #888);
+    background: var(--block-bg, rgba(128,128,128,0.06));
+    position: relative;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  }
+
+  .reveal .block-theorem,
+  .reveal .block-lemma,
+  .reveal .block-corollary { --block-accent: #3498db; --block-bg: rgba(52,152,219,0.10); }
+  .reveal .block-definition { --block-accent: #27ae60; --block-bg: rgba(39,174,96,0.10); }
+  .reveal .block-proof { --block-accent: #7f8c8d; --block-bg: rgba(127,140,141,0.10); }
+  .reveal .block-example { --block-accent: #9b59b6; --block-bg: rgba(155,89,182,0.10); }
+  .reveal .block-problem { --block-accent: #e67e22; --block-bg: rgba(230,126,34,0.10); }
+  .reveal .block-solution { --block-accent: #16a085; --block-bg: rgba(22,160,133,0.10); }
+  .reveal .block-answer { --block-accent: #f39c12; --block-bg: rgba(243,156,18,0.12); }
+  .reveal .block-note { --block-accent: #3498db; --block-bg: rgba(52,152,219,0.08); }
+  .reveal .block-warning { --block-accent: #e74c3c; --block-bg: rgba(231,76,60,0.10); }
+  .reveal .block-important { --block-accent: #c0392b; --block-bg: rgba(192,57,43,0.12); }
+  .reveal .block-formula { --block-accent: #1abc9c; --block-bg: rgba(26,188,156,0.10); }
+
+  .reveal .block-theorem::before,
+  .reveal .block-definition::before,
+  .reveal .block-lemma::before,
+  .reveal .block-corollary::before,
+  .reveal .block-proof::before,
+  .reveal .block-example::before,
+  .reveal .block-problem::before,
+  .reveal .block-solution::before,
+  .reveal .block-answer::before,
+  .reveal .block-note::before,
+  .reveal .block-warning::before,
+  .reveal .block-important::before,
+  .reveal .block-formula::before {
+    display: inline-block;
+    font-size: 0.55em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--block-accent);
+    background: var(--block-bg);
+    padding: 3px 12px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    border: 1px solid var(--block-accent);
+  }
+
+  .reveal .block-theorem::before { content: '📘 Теорема'; }
+  .reveal .block-definition::before { content: '📗 Определение'; }
+  .reveal .block-lemma::before { content: '📙 Лемма'; }
+  .reveal .block-corollary::before { content: '📒 Следствие'; }
+  .reveal .block-proof::before { content: '✏️ Доказательство'; }
+  .reveal .block-example::before { content: '💡 Пример'; }
+  .reveal .block-problem::before { content: '📝 Задача'; }
+  .reveal .block-solution::before { content: '✅ Решение'; }
+  .reveal .block-answer::before { content: '🎯 Ответ'; }
+  .reveal .block-note::before { content: '💭 Замечание'; }
+  .reveal .block-warning::before { content: '⚠️ Внимание'; }
+  .reveal .block-important::before { content: '❗ Важно'; }
+  .reveal .block-formula::before { content: '🔢 Формула'; }
+
+  .reveal [class*="block-"][data-title]::before {
+    content: attr(data-title);
+  }
+</style>
+</head>
+<body>
+<div class="reveal">
+  <div class="slides">
+${sections}
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@4.6.1/dist/reveal.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@4.6.1/plugin/markdown/markdown.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@4.6.1/plugin/math/math.js"><\/script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@4.6.1/plugin/notes/notes.js"><\/script>
+
+<script>
+  Reveal.initialize({
+    hash: false,
+    slideNumber: 'c/t',
+    controls: true,
+    progress: true,
+    transition: 'slide',
+    center: false,
+    width: ${aspect.w},
+    height: ${aspect.h},
+    margin: 0.02,
+    minScale: 0.2,
+    maxScale: 1.5,
+    plugins: [ RevealMarkdown, RevealMath.KaTeX, RevealNotes ],
+    markdown: { smartypants: false },
+    katex: {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$',  right: '$',  display: false },
+        { left: '\\\\[', right: '\\\\]', display: true },
+        { left: '\\\\(', right: '\\\\)', display: false }
+      ],
+      throwOnError: false,
+      ignoredTags: ['script','noscript','style','textarea','pre','code']
+    }
+  }).then(() => {
+    function bindSectionScroll() {
+      document.querySelectorAll('.reveal .slides section').forEach(section => {
+        if (section.dataset.scrollBound) return;
+        section.dataset.scrollBound = '1';
+
+        section.addEventListener('wheel', (e) => {
+          const atTop    = section.scrollTop <= 0;
+          const atBottom = section.scrollTop + section.clientHeight
+                           >= section.scrollHeight - 1;
+          const goingUp   = e.deltaY < 0;
+          const goingDown = e.deltaY > 0;
+          const willScrollInside =
+            (goingUp   && !atTop) ||
+            (goingDown && !atBottom);
+          if (willScrollInside) {
+            e.preventDefault();
+            e.stopPropagation();
+            section.scrollTop += e.deltaY;
+          }
+        }, { passive: false });
+      });
+    }
+    function resetScrolls() {
+      document.querySelectorAll('.reveal .slides section').forEach(s => {
+        s.scrollTop = 0;
+      });
+    }
+    bindSectionScroll();
+    Reveal.on('slidechanged', resetScrolls);
+    Reveal.on('ready', () => { bindSectionScroll(); resetScrolls(); });
+  });
+<\/script>
+</body>
+</html>`;
+}
+
+/* ==================================================================
+   6. ОБНОВЛЕНИЕ ПРЕДПРОСМОТРА
+   ================================================================== */
+
+function refreshPreview() {
+  const iframe = document.getElementById('preview-frame');
+  const status = document.getElementById('status');
+
+  status.textContent = 'Обновление...';
+  status.classList.remove('ok');
+
+  const html = buildPreviewHTML();
+  const doc = iframe.contentDocument || iframe.contentWindow.document;
+  doc.open(); doc.write(html); doc.close();
+
+  setTimeout(() => {
+    status.textContent = '✓ ' + new Date().toLocaleTimeString();
+    status.classList.add('ok');
+  }, 300);
+}
+
+/* ==================================================================
+   7. ВЫБОР АКТИВНОЙ TEXTAREA
+   ================================================================== */
+
+function getActiveTextarea() {
+  const active = document.activeElement;
+  if (active && active.tagName === 'TEXTAREA') {
+    lastFocusedTextarea = active;
+    return active;
+  }
+  if (lastFocusedTextarea && document.body.contains(lastFocusedTextarea)) {
+    return lastFocusedTextarea;
+  }
+  const all = document.querySelectorAll('.slide-block textarea');
+  return all.length ? all[0] : null;
+}
+
+/* ==================================================================
+   8. СВОРАЧИВАНИЕ ПАНЕЛИ ИНСТРУМЕНТОВ
+   ================================================================== */
+
+function setToolsCollapsed(collapsed) {
+  const wrapper = document.getElementById('insertBarWrapper');
+  const btn = document.getElementById('btnToggleTools');
+  const hint = document.getElementById('insertBarHint');
+  if (!wrapper || !btn) return;
+
+  if (collapsed) {
+    wrapper.classList.add('collapsed');
+    btn.textContent = '▶';
+    btn.title = 'Развернуть панель (Ctrl+B)';
+    if (hint) hint.textContent = 'Ctrl+B — развернуть';
+  } else {
+    wrapper.classList.remove('collapsed');
+    btn.textContent = '▼';
+    btn.title = 'Свернуть панель (Ctrl+B)';
+    if (hint) hint.textContent = 'Ctrl+B — свернуть';
+  }
+}
+
+function initToolsToggle() {
+  const btn = document.getElementById('btnToggleTools');
+  btn.addEventListener('click', () => {
+    const collapsed = !document.getElementById('insertBarWrapper').classList.contains('collapsed');
+    setToolsCollapsed(collapsed);
+    scheduleSave();
+  });
+}
+
+/* ==================================================================
+   9. РАЗДЕЛИТЕЛЬ + РЕСАЙЗ
+   ================================================================== */
+
+function applyEditorRatio() {
+  const main = document.querySelector('.main');
+  const splitter = document.getElementById('splitter');
+  const editorPanel = document.getElementById('editorPanel');
+  if (!main || !editorPanel || !splitter) return;
+
+  const rect = main.getBoundingClientRect();
+  const splitterW = splitter.offsetWidth;
+  const available = rect.width - splitterW;
+  const minEditor = 200;
+  const minPreview = 200;
+  const maxEditor = Math.max(minEditor, available - minPreview);
+
+  let newWidth = available * editorRatio;
+  newWidth = Math.max(minEditor, Math.min(maxEditor, newWidth));
+  editorPanel.style.width = newWidth + 'px';
+}
+
+function initSplitter() {
+  const splitter = document.getElementById('splitter');
+  const editorPanel = document.getElementById('editorPanel');
+  const main = document.querySelector('.main');
+  let dragging = false;
+
+  splitter.addEventListener('mousedown', (e) => {
+    dragging = true;
+    splitter.classList.add('active');
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const rect = main.getBoundingClientRect();
+    let newWidth = e.clientX - rect.left;
+    const minW = 200;
+    const maxW = rect.width - 200 - splitter.offsetWidth;
+    if (newWidth < minW) newWidth = minW;
+    if (newWidth > maxW) newWidth = maxW;
+    editorPanel.style.width = newWidth + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!dragging) return;
+    dragging = false;
+    splitter.classList.remove('active');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+
+    const rect = main.getBoundingClientRect();
+    const available = rect.width - splitter.offsetWidth;
+    if (available > 0) {
+      editorRatio = Math.max(0.2, Math.min(0.8, editorPanel.offsetWidth / available));
+      scheduleSave();
+    }
+
+    setTimeout(() => {
+      const iframe = document.getElementById('preview-frame');
+      if (iframe && iframe.contentWindow && iframe.contentWindow.Reveal) {
+        iframe.contentWindow.Reveal.layout();
+      }
+    }, 50);
+  });
+
+  splitter.addEventListener('dblclick', () => {
+    editorRatio = 0.5;
+    applyEditorRatio();
+    scheduleSave();
+    setTimeout(() => {
+      const iframe = document.getElementById('preview-frame');
+      if (iframe && iframe.contentWindow && iframe.contentWindow.Reveal) {
+        iframe.contentWindow.Reveal.layout();
+      }
+    }, 50);
+  });
+
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeDebounceTimer);
+    resizeDebounceTimer = setTimeout(() => {
+      applyEditorRatio();
+      setTimeout(() => {
+        const iframe = document.getElementById('preview-frame');
+        if (iframe && iframe.contentWindow && iframe.contentWindow.Reveal) {
+          iframe.contentWindow.Reveal.layout();
+        }
+      }, 100);
+    }, 100);
+  });
+}
+
+/* ==================================================================
+   10. ИМПОРТ / ЭКСПОРТ
+   ================================================================== */
+
+function downloadFile(content, filename, mime) {
+  const blob = new Blob([content], { type: mime });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function exportMarkdown() {
+  const slides = getSlidesContent();
+  const text = slides.join('\n\n---\n\n');
+  downloadFile(text, 'presentation.md', 'text/markdown;charset=utf-8');
+  document.getElementById('status').textContent = '✓ MD экспортирован';
+}
+
+function exportHTML() {
+  const html = buildPreviewHTML();
+  downloadFile(html, 'presentation.html', 'text/html;charset=utf-8');
+  document.getElementById('status').textContent = '✓ HTML экспортирован';
+}
+
+function importSlides(text) {
+  document.querySelectorAll('.slide-block').forEach(b => b.remove());
+  const parts = text.split(/^\s*---\s*$/m).filter(s => s.trim());
+
+  if (parts.length === 0) {
+    addSlide('# Новый слайд\n\nВведите текст...');
+  } else {
+    parts.forEach(p => addSlide(p.trim()));
+  }
+
+  renumberSlides();
+  document.getElementById('importModal').classList.remove('active');
+  refreshPreview();
+  saveState();
+}
+
+/* ==================================================================
+   11. ИНИЦИАЛИЗАЦИЯ
+   ================================================================== */
+
+document.addEventListener('DOMContentLoaded', () => {
+
+  const saved = loadState();
+  if (saved) {
+    setSettings(saved);
+    if (typeof saved.editorRatio === 'number' &&
+        saved.editorRatio >= 0.2 && saved.editorRatio <= 0.8) {
+      editorRatio = saved.editorRatio;
+    }
+    if (Array.isArray(saved.slides) && saved.slides.length) {
+      saved.slides.forEach(s => addSlide(String(s)));
+    } else {
+      DEFAULT_SLIDES.forEach(s => addSlide(s));
+    }
+    if (saved.toolsCollapsed === true) {
+      setToolsCollapsed(true);
+    }
+  } else {
+    DEFAULT_SLIDES.forEach(s => addSlide(s));
+  }
+
+  initSplitter();
+  initToolsToggle();
+  applyEditorRatio();
+
+  document.getElementById('btnRefresh').addEventListener('click', refreshPreview);
+  document.getElementById('btnAddSlide').addEventListener('click', () => {
+    addSlide('# Новый слайд\n\nВведите содержимое...');
+  });
+  document.getElementById('btnAddSlideBottom').addEventListener('click', () => {
+    addSlide('# Новый слайд\n\nВведите содержимое...');
+  });
+
+  ['themeSelect','fontSelect','baseSizeSelect','titleSizeSelect','aspectSelect'].forEach(id => {
+    document.getElementById(id).addEventListener('change', () => {
+      scheduleSave();
+      refreshPreview();
+    });
+  });
+
+  document.getElementById('btnExport').addEventListener('click', exportMarkdown);
+  document.getElementById('btnExportHTML').addEventListener('click', exportHTML);
+
+  document.getElementById('btnReset').addEventListener('click', () => {
+    if (confirm('Сбросить все слайды и настройки к заводским примерам? Ваши данные будут потеряны.')) {
+      try { localStorage.removeItem(STORAGE_KEY); } catch (e) {}
+      location.reload();
+    }
+  });
+
+  const modal = document.getElementById('importModal');
+  document.getElementById('btnImport').addEventListener('click', () => {
+    modal.classList.add('active');
+    document.getElementById('importText').focus();
+  });
+  document.getElementById('btnImportCancel').addEventListener('click', () => {
+    modal.classList.remove('active');
+  });
+  document.getElementById('btnImportConfirm').addEventListener('click', () => {
+    const text = document.getElementById('importText').value;
+    if (text.trim()) importSlides(text);
+    document.getElementById('importText').value = '';
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') modal.classList.remove('active');
+    if (e.ctrlKey && e.key === 'Enter') {
+      e.preventDefault();
+      refreshPreview();
+    }
+    if (e.ctrlKey && (e.key === 's' || e.key === 'S')) {
+      e.preventDefault();
+      saveState();
+    }
+    if (e.ctrlKey && (e.key === 'b' || e.key === 'B')) {
+      e.preventDefault();
+      const collapsed = !document.getElementById('insertBarWrapper').classList.contains('collapsed');
+      setToolsCollapsed(collapsed);
+      scheduleSave();
+    }
+  });
+
+  document.querySelectorAll('.insert-bar-content button[data-insert]').forEach(btn => {
+    btn.addEventListener('mousedown', (e) => e.preventDefault());
+    btn.addEventListener('click', () => {
+      const ta = getActiveTextarea();
+      if (!ta) return;
+      let text = btn.dataset.insert;
+      const tmp = document.createElement('textarea');
+      tmp.innerHTML = text;
+      text = tmp.value;
+
+      if (btn.dataset.wrap !== undefined) {
+        insertTemplate(ta, text);
+      } else {
+        const start = ta.selectionStart;
+        const end   = ta.selectionEnd;
+        ta.focus();
+        ta.setSelectionRange(start, end);
+        safeInsertText(ta, text);
+        const pos = start + text.length;
+        ta.setSelectionRange(pos, pos);
+        lastFocusedTextarea = ta;
+        updateSlideInfo(ta.parentNode);
+        scheduleSave();
+      }
+    });
+  });
+
+  const subslideBtn = document.getElementById('btnInsertSubslide');
+  subslideBtn.addEventListener('mousedown', (e) => e.preventDefault());
+  subslideBtn.addEventListener('click', () => {
+    const ta = getActiveTextarea();
+    if (!ta) return;
+    insertSubslideInto(ta);
+  });
+
+  window.addEventListener('beforeunload', () => {
+    try { saveState(); } catch (e) {}
+  });
+
+  initializing = false;
+  refreshPreview();
+});
+</script>
+</body>
+</html>
